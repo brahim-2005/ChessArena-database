@@ -1,0 +1,12 @@
+{
+  "name": "chessarena-database",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "db:migrate": "node scripts/migrate.js"
+  },
+  "dependencies": {
+    "@next/env": "^16.4.5",
+    "pg": "^8.11.3"
+  }
+}
