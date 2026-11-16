@@ -28,7 +28,10 @@ npm install
 Copy-Item .env.example .env.local
 ```
 
-Put the direct Postgres connection string in `.env.local`, then run:
+Put the direct Postgres connection string in `.env.local`, replacing
+`YOUR_DB_PASSWORD`. If the password contains reserved URL characters, URL-encode
+them before using it. You can reset the database password from the Supabase
+Dashboard if you no longer know it. Then run:
 
 ```powershell
 npm run db:migrate
