@@ -21,6 +21,9 @@ and migration runner.
 Review the SQL before applying it. For an existing installation, use the
 appropriate compatibility SQL in the Supabase SQL Editor; do not blindly run
 the complete schema over production data. Test changes in staging first.
+For the format-specific ratings and rating history, run
+`sql/player_intelligence.sql` in the SQL Editor. It is safe to rerun when
+applying updates such as rating-history read policies or new-player defaults.
 
 ## Migration runner
 

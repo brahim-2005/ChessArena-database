@@ -97,6 +97,42 @@ CREATE INDEX IF NOT EXISTS idx_rating_history_format
 CREATE INDEX IF NOT EXISTS idx_player_ratings_format_rating
   ON public.player_ratings(format, rating DESC);
 
+ALTER TABLE public.player_ratings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.rating_history ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public player ratings select" ON public.player_ratings;
+CREATE POLICY "Public player ratings select" ON public.player_ratings
+  FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public rating history select" ON public.rating_history;
+CREATE POLICY "Public rating history select" ON public.rating_history
+  FOR SELECT USING (true);
+
+GRANT SELECT ON public.player_ratings, public.rating_history TO anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.create_default_player_ratings()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  INSERT INTO public.player_ratings (profile_id, format)
+  VALUES
+    (NEW.id, 'bullet'),
+    (NEW.id, 'blitz'),
+    (NEW.id, 'rapid'),
+    (NEW.id, 'classical')
+  ON CONFLICT (profile_id, format) DO NOTHING;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_profile_create_default_ratings ON public.profiles;
+CREATE TRIGGER on_profile_create_default_ratings
+  AFTER INSERT ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.create_default_player_ratings();
+
 CREATE OR REPLACE FUNCTION public.apply_online_game_action(
   p_game_id UUID,
   p_actor_id UUID,
