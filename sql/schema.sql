@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   username TEXT UNIQUE NOT NULL,
   full_name TEXT,
   avatar_url TEXT,
-  rating INTEGER DEFAULT 1200,
+  rating INTEGER DEFAULT 200,
   games_played INTEGER DEFAULT 0,
   wins INTEGER DEFAULT 0,
   losses INTEGER DEFAULT 0,
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS profiles (
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS full_name TEXT,
   ADD COLUMN IF NOT EXISTS avatar_url TEXT,
-  ADD COLUMN IF NOT EXISTS rating INTEGER DEFAULT 1200,
+  ADD COLUMN IF NOT EXISTS rating INTEGER DEFAULT 200,
   ADD COLUMN IF NOT EXISTS games_played INTEGER DEFAULT 0,
   ADD COLUMN IF NOT EXISTS wins INTEGER DEFAULT 0,
   ADD COLUMN IF NOT EXISTS losses INTEGER DEFAULT 0,
@@ -47,8 +47,8 @@ CREATE TABLE IF NOT EXISTS games (
   white_player_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
   black_player_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
   result TEXT DEFAULT 'in_progress' CHECK (result IN ('in_progress', 'white_wins', 'black_wins', 'draw', 'abandoned')),
-  white_rating INTEGER DEFAULT 1200,
-  black_rating INTEGER DEFAULT 1200,
+  white_rating INTEGER DEFAULT 200,
+  black_rating INTEGER DEFAULT 200,
   white_rating_change INTEGER,
   black_rating_change INTEGER,
   time_control TEXT NOT NULL DEFAULT '3+2',
@@ -66,8 +66,10 @@ CREATE TABLE IF NOT EXISTS games (
 ALTER TABLE public.games
   ADD COLUMN IF NOT EXISTS white_player_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS black_player_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
-  ADD COLUMN IF NOT EXISTS white_rating INTEGER DEFAULT 1200,
-  ADD COLUMN IF NOT EXISTS black_rating INTEGER DEFAULT 1200,
+  ADD COLUMN IF NOT EXISTS white_rating INTEGER DEFAULT 200,
+  ADD COLUMN IF NOT EXISTS black_rating INTEGER DEFAULT 200,
+  ADD COLUMN IF NOT EXISTS rated BOOLEAN NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS format TEXT NOT NULL DEFAULT 'rapid',
   ADD COLUMN IF NOT EXISTS white_rating_change INTEGER,
   ADD COLUMN IF NOT EXISTS black_rating_change INTEGER,
   ADD COLUMN IF NOT EXISTS time_control TEXT NOT NULL DEFAULT '3+2',
@@ -334,6 +336,70 @@ VALUES
     900,
     'Checkmate',
     'Beginner'
+  ),
+  (
+    '00000000-0000-4000-8000-000000000003',
+    'r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNBQK1AR w KQkq - 0 1',
+    '["Bb5"]'::jsonb,
+    1000,
+    'Tactical',
+    'Easy'
+  ),
+  (
+    '00000000-0000-4000-8000-000000000004',
+    'r4rk1/pppp1qp/2n2bn1/3p4/3P4/2N2B1/PPPP1QPP/R4RK1 w - - 0 1',
+    '["Bxf7"]'::jsonb,
+    1200,
+    'Tactical',
+    'Medium'
+  ),
+  (
+    '00000000-0000-4000-8000-000000000005',
+    '1n1q1rk1/pppp1ppp/2n2bn1/4p3/4P3/2N2B1/PPPP1PPP/R1BQ1RK1 b - - 0 1',
+    '["Bxf7+"]'::jsonb,
+    1400,
+    'Tactical',
+    'Medium'
+  ),
+  (
+    '00000000-0000-4000-8000-000000000006',
+    'r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNBQK1AR w KQkq - 0 1',
+    '["Nf3"]'::jsonb,
+    1100,
+    'Tactical',
+    'Easy'
+  ),
+  (
+    '00000000-0000-4000-8000-000000000007',
+    'r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNBQK1AR w KQkq - 0 1',
+    '["Bb5"]'::jsonb,
+    1300,
+    'Tactical',
+    'Medium'
+  ),
+  (
+    '00000000-0000-4000-8000-000000000008',
+    'r2qkb1r/pppp1ppp/2n5/4p3/2B1P3/2N2N1/PPPP1PPP/R1BQ1RK1 b kq - 0 1',
+    '["Bb4+"]'::jsonb,
+    1500,
+    'Tactical',
+    'Hard'
+  ),
+  (
+    '00000000-0000-4000-8000-000000000009',
+    'rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 0 1',
+    '["Bc5"]'::jsonb,
+    950,
+    'Tactical',
+    'Easy'
+  ),
+  (
+    '00000000-0000-4000-8000-000000000010',
+    'r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNBQK1AR w KQkq - 0 1',
+    '["Bxf7"]'::jsonb,
+    1150,
+    'Tactical',
+    'Medium'
   )
 ON CONFLICT (id) DO NOTHING;
 
@@ -1094,10 +1160,17 @@ BEGIN
 
   INSERT INTO games (
     white_player_id, black_player_id, white_rating, black_rating,
-    time_control, status, result
+    time_control, rated, format, status, result
   )
-  SELECT opponent_id, requesting_user, white.rating, black.rating,
-    p_time_control, 'in_progress', 'in_progress'
+  SELECT opponent_id, requesting_user, 200, 200,
+    p_time_control, true,
+    CASE
+      WHEN p_time_control = '1+0' THEN 'bullet'
+      WHEN p_time_control IN ('3+0', '3+2', '5+0') THEN 'blitz'
+      WHEN p_time_control IN ('10+0', '10+5') THEN 'rapid'
+      ELSE 'classical'
+    END,
+    'in_progress', 'in_progress'
   FROM profiles AS white
   JOIN profiles AS black ON black.id = requesting_user
   WHERE white.id = opponent_id
@@ -1181,7 +1254,7 @@ BEGIN
     NEW.id,
     COALESCE(NEW.raw_user_meta_data->>'username', split_part(NEW.email, '@', 1)),
     COALESCE(NEW.raw_user_meta_data->>'full_name', 'Chess Player'),
-    1200,
+    200,
     '{"boardTheme": "dark", "pieceTheme": "standard", "soundEnabled": true}'::jsonb
   )
   ON CONFLICT (id) DO NOTHING;

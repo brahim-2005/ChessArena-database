@@ -13,14 +13,17 @@ async function runMigrations() {
     );
   }
 
-  const schemaPath = path.join(__dirname, '../sql/schema.sql');
-  const schema = fs.readFileSync(schemaPath, 'utf8');
+  const schemaPaths = [
+    path.join(__dirname, '../sql/schema.sql'),
+    path.join(__dirname, '../sql/player_intelligence.sql'),
+  ];
+  const migrationSql = schemaPaths.map((schemaPath) => fs.readFileSync(schemaPath, 'utf8')).join('\n');
   const client = new Client({ connectionString });
 
   await client.connect();
   try {
     await client.query('BEGIN');
-    await client.query(schema);
+    await client.query(migrationSql);
     await client.query('COMMIT');
     console.log('ChessArena database schema applied successfully.');
   } catch (error) {

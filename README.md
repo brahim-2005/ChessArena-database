@@ -8,6 +8,9 @@ and migration runner.
 - `sql/schema.sql` — canonical schema for a new or fully reviewed setup.
 - `sql/fix_matchmaking_and_seed_puzzles.sql` — compatibility patch for existing
   projects, including game/profile fixes, clubs, messaging, and starter puzzles.
+- `sql/player_intelligence.sql` — fixed +8/-8 ChessArena ratings, separate
+  Bullet/Blitz/Rapid/Classical ratings, rating history, achievements, and
+  player insights support.
 - `sql/game_invitations.sql` and `sql/fix_game_invitations.sql` — game invitation
   schema and compatibility migration.
 - `scripts/migrate.js` — applies `sql/schema.sql` using a direct Postgres
